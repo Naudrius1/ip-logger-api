@@ -19,6 +19,7 @@ export default async function handler(req, res) {
   }
 
   const {
+    session_id,
     ip,
     userAgent,
     referrer,
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
 
   const { error } = await supabase.from('ip_logs').insert([
     {
+      session_id,
       ip,
       user_agent: userAgent,
       referrer,
