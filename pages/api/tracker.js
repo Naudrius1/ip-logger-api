@@ -1,5 +1,5 @@
 export default function handler(req, res) {
-  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
   res.send(`
     console.log('🚀 Visitor logger with session tracking running...');
