@@ -6,20 +6,24 @@ export default function handler(req, res) {
 
     (async () => {
       try {
+        // 1️⃣ Session ID
         let sessionId = localStorage.getItem('visitor_session');
         if (!sessionId) {
-          sessionId = \`\${Date.now()}-\${Math.floor(Math.random() * 1000000)}\`;
+          sessionId = Date.now() + '-' + Math.floor(Math.random() * 1000000);
           localStorage.setItem('visitor_session', sessionId);
         }
         console.log('🧠 Session ID:', sessionId);
 
+        // 2️⃣ IP
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const { ip } = await ipRes.json();
         console.log('📡 IP:', ip);
 
-        const geoRes = await fetch(\`https://ipapi.co/\${ip}/json/\`);
+        // 3️⃣ Geo
+        const geoRes = await fetch('https://ipapi.co/' + ip + '/json/');
         const geo = await geoRes.json();
 
+        // 4️⃣ UTM params
         const urlParams = new URLSearchParams(window.location.search);
         const utm = {
           source: urlParams.get('utm_source'),
@@ -27,12 +31,14 @@ export default function handler(req, res) {
           campaign: urlParams.get('utm_campaign'),
         };
 
+        // 5️⃣ Screen info
         const screen = {
           width: window.screen.width,
           height: window.screen.height,
           dpr: window.devicePixelRatio,
         };
 
+        // 6️⃣ Payload
         const payload = {
           session_id: sessionId,
           ip,
@@ -49,6 +55,7 @@ export default function handler(req, res) {
           screen
         };
 
+        // 7️⃣ Send to logging endpoint
         const resLog = await fetch('https://ip-logger-api.vercel.app/api/log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
