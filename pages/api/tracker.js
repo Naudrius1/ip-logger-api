@@ -2,11 +2,11 @@ export default function handler(req, res) {
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
   res.send(`
-    console.log('🚀 Visitor logger with session tracking running...');
+    console.log('🚀 Visitor logger with session + lead tracking running...');
 
     (async () => {
       try {
-        // 1️⃣ Session ID
+        // Session ID
         let sessionId = localStorage.getItem('visitor_session');
         if (!sessionId) {
           sessionId = Date.now() + '-' + Math.floor(Math.random() * 1000000);
@@ -14,16 +14,24 @@ export default function handler(req, res) {
         }
         console.log('🧠 Session ID:', sessionId);
 
-        // 2️⃣ IP
+        // Device ID
+        let deviceId = localStorage.getItem('visitor_device_id');
+        if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          localStorage.setItem('visitor_device_id', deviceId);
+        }
+        console.log('💻 Device ID:', deviceId);
+
+        // IP
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const { ip } = await ipRes.json();
         console.log('📡 IP:', ip);
 
-        // 3️⃣ Geo
+        // Geo
         const geoRes = await fetch('https://ipapi.co/' + ip + '/json/');
         const geo = await geoRes.json();
 
-        // 4️⃣ UTM params
+        // UTM params
         const urlParams = new URLSearchParams(window.location.search);
         const utm = {
           source: urlParams.get('utm_source'),
@@ -31,16 +39,17 @@ export default function handler(req, res) {
           campaign: urlParams.get('utm_campaign'),
         };
 
-        // 5️⃣ Screen info
+        // Screen info
         const screen = {
           width: window.screen.width,
           height: window.screen.height,
           dpr: window.devicePixelRatio,
         };
 
-        // 6️⃣ Payload
+        // Log visitor hit
         const payload = {
           session_id: sessionId,
+          device_id: deviceId,
           ip,
           userAgent: navigator.userAgent,
           referrer: document.referrer,
@@ -55,7 +64,6 @@ export default function handler(req, res) {
           screen
         };
 
-        // 7️⃣ Send to logging endpoint
         const resLog = await fetch('https://ip-logger-api.vercel.app/api/log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -63,9 +71,48 @@ export default function handler(req, res) {
         });
 
         const result = await resLog.text();
-        console.log('✅ Logged:', result);
+        console.log('✅ Visit logged:', result);
+
+        // Lead form handling
+        const form = document.getElementById("lead-form");
+        if (form) {
+          form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const name = form.name.value;
+            const email = form.email.value;
+
+            const leadPayload = {
+              name,
+              email,
+              session_id: sessionId,
+              device_id: deviceId,
+              page: window.location.href,
+              referrer: document.referrer,
+              userAgent: navigator.userAgent
+            };
+
+            try {
+              const resLead = await fetch("https://ip-logger-api.vercel.app/api/submit-lead", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(leadPayload)
+              });
+
+              const result = await resLead.text();
+              console.log("✅ Lead submitted:", result);
+              const status = document.getElementById("status");
+              if (status) status.innerText = "✅ Lead submitted!";
+            } catch (err) {
+              console.error("❌ Lead submission error:", err);
+              const status = document.getElementById("status");
+              if (status) status.innerText = "❌ Submission failed.";
+            }
+          });
+        }
       } catch (err) {
-        console.error('❌ Visitor log error:', err);
+        console.error('❌ Visitor tracker error:', err);
       }
     })();
   `);
